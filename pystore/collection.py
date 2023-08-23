@@ -118,10 +118,10 @@ class Collection(object):
             # work on copy
             data = data.copy()
 
-        if epochdate or "datetime" in str(data.index.dtype):
+        '''if epochdate or "datetime" in str(data.index.dtype):
             data = utils.datetime_to_int64(data)
             if (1 == data.index.nanosecond).any() and "times" not in kwargs:
-                kwargs["times"] = "int96"
+                kwargs["times"] = "int96"'''
 
         if data.index.name == "":
             data.index.name = "index"
@@ -197,9 +197,9 @@ class Collection(object):
         data = data.copy()
 
         try:
-            if epochdate or ("datetime" in str(data.index.dtype) and
+            '''if epochdate or ("datetime" in str(data.index.dtype) and
                              any(data.index.nanosecond) > 0):
-                data = utils.datetime_to_int64(data)
+                data = utils.datetime_to_int64(data)'''
             old_index = dd.read_parquet(self._item_path(item, as_string=True),
                                         columns=[], engine=self.engine
                                         ).index.compute()
