@@ -111,6 +111,9 @@ class Collection(object):
             raise ValueError("""
                 Item already exists. To overwrite, use `overwrite=True`.
                 Otherwise, use `<collection>.append()`""")
+        
+        if overwrite:
+            self.delete_item(item)
 
         if isinstance(data, Item):
             data = data.to_pandas()
