@@ -112,9 +112,6 @@ class Collection(object):
                 Item already exists. To overwrite, use `overwrite=True`.
                 Otherwise, use `<collection>.append()`""")
         
-        if overwrite:
-            self.delete_item(item)
-
         if isinstance(data, Item):
             data = data.to_pandas()
         else:
@@ -139,7 +136,13 @@ class Collection(object):
                 npartitions = int(
                     1 + memusage // config.PARTITION_SIZE)
                 data = dd.from_pandas(data, npartitions=npartitions)
-
+        
+        if overwrite:
+            try:
+                self.delete_item(item)
+            except Exception: #already
+                pass
+            
         dd.to_parquet(data, self._item_path(item, as_string=True),
                       compression="snappy", engine=self.engine, **kwargs)
 
