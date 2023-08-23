@@ -58,7 +58,7 @@ class Item(object):
 
         self.metadata = utils.read_metadata(self._path)
         self.data = dd.read_parquet(
-            self._path, engine=self.engine, filters=filters, columns=columns)
+            self._path, engine=self.engine, filters=filters, columns=columns, calculate_divisions=True)
 
     def to_pandas(self, parse_dates=True):
         df = self.data.compute()
