@@ -205,7 +205,7 @@ def columns_to_str(df, inplace=False):
   if not inplace:
     df = df.copy()
   if df.columns.nlevels > 1:
-    df.columns = list(map(lambda x : str(x), hurst_study.columns))#list(map(lambda x: tuple(x), df.columns.to_frame().applymap(lambda x: str(x)).values))#.to_list()
+    df.columns = list(map(lambda x : str(x), df.columns))#list(map(lambda x: tuple(x), df.columns.to_frame().applymap(lambda x: str(x)).values))#.to_list()
   else:
     df.columns = df.columns.astype(str)
   return df
