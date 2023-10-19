@@ -194,11 +194,9 @@ def infer_str_to_float_or_int(s):
     return s
   
 def columns_to_multiindex(df, inplace=False):
-  assert all(isinstance(c, str) for c in df.columns)
-  assert all(c[0] == '(' and c[-1] == ')' for c in df.columns)
-  if not inplace:
-    df = df.copy() 
-  df.columns = pd.MultiIndex.from_tuples(list(map(lambda x: tuple(x[1:-1].split(', ')), df.columns)))
-
-  df.columns = pd.MultiIndex.from_tuples(list(map(lambda x: tuple(x), df.columns.to_frame().applymap(infer_str_to_float_or_int).values)))
+  if all(c[0] == '(' and c[-1] == ')' for c in df.columns)
+    if not inplace:
+      df = df.copy() 
+    df.columns = pd.MultiIndex.from_tuples(list(map(lambda x: tuple(x[1:-1].split(', ')), df.columns)))
+    df.columns = pd.MultiIndex.from_tuples(list(map(lambda x: tuple(x), df.columns.to_frame().applymap(infer_str_to_float_or_int).values)))
   return df
