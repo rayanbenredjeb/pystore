@@ -142,9 +142,14 @@ class Collection(object):
                 self.delete_item(item)
             except Exception: #already
                 pass
-            
-        dd.to_parquet(data, self._item_path(item, as_string=True),
-                      compression="snappy", engine=self.engine, **kwargs)
+        try:
+            dd.to_parquet(data, self._item_path(item, as_string=True), compression="snappy", engine=self.engine, **kwargs) #code for writing item
+        except ValueError as e:
+            if len(e.args) > 0 and e.args[0] == "parquet doesn't support non-string column names":
+                data = utils.columns_to_str(data, inplace=True) # already work on copy    
+                dd.to_parquet(data, self._item_path(item, as_string=True), compression="snappy", engine=self.engine, **kwargs)
+            else:
+                raise e
 
         utils.write_metadata(utils.make_path(
             self.datastore, self.collection, item), metadata)
