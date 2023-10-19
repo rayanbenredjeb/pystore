@@ -200,3 +200,12 @@ def columns_to_multiindex(df, inplace=False):
     df.columns = pd.MultiIndex.from_tuples(list(map(lambda x: tuple(x[1:-1].split(', ')), df.columns)))
     df.columns = pd.MultiIndex.from_tuples(list(map(lambda x: tuple(x), df.columns.to_frame().applymap(infer_str_to_float_or_int).values)))
   return df
+
+def columns_to_str(df, inplace=False):
+  if not inplace:
+    df = df.copy()
+  if df.columns.nlevels > 1:
+    df.columns = list(map(lambda x : str(x), hurst_study.columns))#list(map(lambda x: tuple(x), df.columns.to_frame().applymap(lambda x: str(x)).values))#.to_list()
+  else:
+    df.columns = df.columns.astype(str)
+  return df
