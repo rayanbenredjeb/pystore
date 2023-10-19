@@ -62,7 +62,7 @@ class Item(object):
 
     def to_pandas(self, parse_dates=True):
         df = self.data.compute()
-
+        df = utils.columns_to_multiindex(df, inplace=True)
         '''if parse_dates and "datetime" not in str(df.index.dtype):
             df.index.name = ""
             if str(df.index.dtype) == "float64":
