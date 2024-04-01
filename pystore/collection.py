@@ -33,7 +33,7 @@ class Collection(object):
     def __repr__(self):
         return "PyStore.collection <%s>" % self.collection
 
-    def __init__(self, collection, datastore, engine="fastparquet"):
+    def __init__(self, collection, datastore, engine="pyarrow"):
         self.engine = engine
         self.datastore = datastore
         self.collection = collection
@@ -111,17 +111,17 @@ class Collection(object):
             raise ValueError("""
                 Item already exists. To overwrite, use `overwrite=True`.
                 Otherwise, use `<collection>.append()`""")
-        
+
         if isinstance(data, Item):
             data = data.to_pandas()
         else:
             # work on copy
             data = data.copy()
 
-        '''if epochdate or "datetime" in str(data.index.dtype):
+        if epochdate or "datetime" in str(data.index.dtype):
             data = utils.datetime_to_int64(data)
             if (1 == data.index.nanosecond).any() and "times" not in kwargs:
-                kwargs["times"] = "int96"'''
+                kwargs["times"] = "int96"
 
         if data.index.name == "":
             data.index.name = "index"
@@ -136,20 +136,9 @@ class Collection(object):
                 npartitions = int(
                     1 + memusage // config.PARTITION_SIZE)
                 data = dd.from_pandas(data, npartitions=npartitions)
-        
-        if overwrite:
-            try:
-                self.delete_item(item)
-            except Exception: #already
-                pass
-        try:
-            dd.to_parquet(data, self._item_path(item, as_string=True), compression="snappy", engine=self.engine, **kwargs) #code for writing item
-        except ValueError as e:
-            if len(e.args) > 0 and e.args[0] == "parquet doesn't support non-string column names":
-                data = utils.columns_to_str(data, inplace=True) # already work on copy    
-                dd.to_parquet(data, self._item_path(item, as_string=True), compression="snappy", engine=self.engine, **kwargs)
-            else:
-                raise e
+
+        dd.to_parquet(data, self._item_path(item, as_string=True),
+                      compression="snappy", engine=self.engine, **kwargs)
 
         utils.write_metadata(utils.make_path(
             self.datastore, self.collection, item), metadata)
@@ -160,46 +149,8 @@ class Collection(object):
             self._list_items_threaded()
 
     def append(self, item, data, npartitions=None, epochdate=False,
-               threaded=False, reload_items=False, remove_duplicates=None,
-               **kwargs):
-        """Append new data to the collection.
+               threaded=False, reload_items=False, **kwargs):
 
-        Saves new data to the collection and optionially removes duplicates
-        within the data.
-
-        Parameters
-        ----------
-        item
-        data
-        npartitions
-        epochdate
-        threaded
-        reload_items
-        remove_duplicates : str, optional (default=None)
-            Defines how duplicates within the combined dataframe will be
-                handled.
-            None = no check for duplicated data. This is the fastest option
-                but the user is responsible for not having an overlap
-                between the new and old data
-            "index" = For data with unique index but non unique row values.
-                Rows with duplicated indices will be deleted. Ignores the
-                values
-            "values" = For data with non unique index but unique row values.
-                Rows with duplicated values will be deleted. Ignores the index
-            "all" = For data with unique index and unique row values. Rows
-                with duplicated indices will be deleted first and then all
-                rows with duplicated values will be deleted
-            "values_in_index" = For data with non unique index but unique row
-                values within index duplicates. Rows with duplicated values
-                within the same index will be deleted
-
-        kwargs
-
-        Returns
-        -------
-
-        """
-        
         if not utils.path_exists(self._item_path(item)):
             raise ValueError(
                 """Item do not exists. Use `<collection>.write(...)`""")
@@ -208,9 +159,9 @@ class Collection(object):
         data = data.copy()
 
         try:
-            '''if epochdate or ("datetime" in str(data.index.dtype) and
+            if epochdate or ("datetime" in str(data.index.dtype) and
                              any(data.index.nanosecond) > 0):
-                data = utils.datetime_to_int64(data)'''
+                data = utils.datetime_to_int64(data)
             old_index = dd.read_parquet(self._item_path(item, as_string=True),
                                         columns=[], engine=self.engine
                                         ).index.compute()
@@ -224,39 +175,11 @@ class Collection(object):
         if data.index.name == "":
             data.index.name = "index"
 
-        # get old and new dataframe
+        # combine old dataframe with new
         current = self.item(item)
         new = dd.from_pandas(data, npartitions=1)
+        combined = dd.concat([current.data, new]).drop_duplicates(keep="last")
 
-        # combine old dataframe with new and optionally remove duplicates from 
-        # combined dataframe
-        idx_name = data.index.name
-        if remove_duplicates is None:
-            combined = dd.concat([current.data, new])
-        elif remove_duplicates == 'index':
-            combined = dd.concat([current.data, new])\
-                .reset_index()\
-                .drop_duplicates(subset=idx_name, keep="last")\
-                .set_index(idx_name)
-        elif remove_duplicates == 'values':
-            combined = dd.concat([current.data, new])\
-                .drop_duplicates(keep="last")
-        elif remove_duplicates == 'all':
-            combined = dd.concat([current.data, new])\
-                .reset_index()\
-                .drop_duplicates(subset=idx_name, keep="last")\
-                .set_index(idx_name)\
-                .drop_duplicates(keep="last")
-        elif remove_duplicates == 'values_in_index':
-            combined = dd.concat([current.data, new])\
-                .reset_index()\
-                .drop_duplicates(keep="last")\
-                .set_index(idx_name)
-        else:
-            raise ValueError(
-                """argument remove_duplicates must either be None, 'index', 
-                'values', 'all' or 'values_in_index'""")     
-        
         if npartitions is None:
             memusage = combined.memory_usage(deep=True).sum()
             if isinstance(combined, dd.DataFrame):
