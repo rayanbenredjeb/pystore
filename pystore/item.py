@@ -30,7 +30,7 @@ class Item(object):
 
     def __init__(self, item, datastore, collection,
                  snapshot=None, filters=None, columns=None,
-                 engine="fastparquet"):
+                 engine="pyarrow"):
         self.engine = engine
         self.datastore = datastore
         self.collection = collection
@@ -58,19 +58,19 @@ class Item(object):
 
         self.metadata = utils.read_metadata(self._path)
         self.data = dd.read_parquet(
-            self._path, engine=self.engine, filters=filters, columns=columns, calculate_divisions=True)
+            self._path, engine=self.engine, filters=filters, columns=columns)
 
     def to_pandas(self, parse_dates=True):
         df = self.data.compute()
-        df = utils.columns_to_multiindex(df, inplace=True)
-        '''if parse_dates and "datetime" not in str(df.index.dtype):
+
+        if parse_dates and "datetime" not in str(df.index.dtype):
             df.index.name = ""
             if str(df.index.dtype) == "float64":
                 df.index = pd.to_datetime(df.index, unit="s",
                                           infer_datetime_format=True)
             elif df.index.values[0] > 1e6:
                 df.index = pd.to_datetime(df.index,
-                                          infer_datetime_format=True)'''
+                                          infer_datetime_format=True)
 
         return df
 
